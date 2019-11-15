@@ -221,27 +221,6 @@ local function loadInfo()
     end
 end
 
-local function updateBuy()
-    if items.buy then
-        for item = 1, #items.buy do 
-            items.buy[item].count = 0
-            for fingerprint = 1, #items.buy[item].fingerprint do 
-                local checkItem = me.getItemDetail(items.buy[item].fingerprint[fingerprint])
-
-                if checkItem then
-                    local itemBuy = checkItem.basic()
-                    local count = math.floor(itemBuy.qty)
-                    items.buy[item].count = items.buy[item].count and items.buy[item].count + count or count
-                    items.buy[item].notVisible = false
-                else
-                    items.buy[item].count = items.buy[item].count or 0
-                    items.buy[item].notVisible = fingerprint == #items.buy[item].fingerprint and true or false
-                end
-            end
-        end
-    end
-end
-
 local function encode(path)
     return (path:gsub("[^A-Za-z0-9_.~-]", function(c) return ("%%%02X"):format(c:byte()) end))
 end
@@ -284,11 +263,32 @@ local function updateItems()
         filesystem.makeDirectory("/home/logs")
     end
 
-    local data = request("https://адрес-сервера/items.lua")
+    local data = request("http://Ссылка_на_предметы(Можно и на пастебин)/items.lua")
     items = serialization.unserialize(data) 
 
     table.sort(items.buy, sort)
     table.sort(items.sell, sort)
+end
+
+local function updateBuy()
+    if items.buy then
+        for item = 1, #items.buy do 
+            items.buy[item].count = 0
+            for fingerprint = 1, #items.buy[item].fingerprint do 
+                local checkItem = me.getItemDetail(items.buy[item].fingerprint[fingerprint])
+
+                if checkItem then
+                    local itemBuy = checkItem.basic()
+                    local count = math.floor(itemBuy.qty)
+                    items.buy[item].count = items.buy[item].count and items.buy[item].count + count or count
+                    items.buy[item].notVisible = false
+                else
+                    items.buy[item].count = items.buy[item].count or 0
+                    items.buy[item].notVisible = fingerprint == #items.buy[item].fingerprint and true or false
+                end
+            end
+        end
+    end
 end
 
 local function updateUser(log)
