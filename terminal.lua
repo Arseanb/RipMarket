@@ -531,12 +531,13 @@ local function scrollCalc()
     else
         local length = 13 / #itemsList * 13 * 2 + 1
         local check = length % 2
-        length = length < 1 and 1 or (check >= 0 and check < .5 and math.floor(length) or math.ceil(length))
+        local checkResult = check >= 0 and check < .5
+        length = length < 1 and 1 or (checkResult and math.floor(length) or math.ceil(length))
         local differrence = 13 * 2 - 1 - length
         thumb.shift = differrence / (#itemsList - 14)
         thumb.pos = 1
         thumb.oldPos = false
-        thumb.length = length / 2 
+        thumb.length = checkResult and math.floor(length / 2) or math.ceil(length / 2)
 
         scroll()
     end
