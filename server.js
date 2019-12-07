@@ -1,7 +1,7 @@
 const http = require("http")
 const fs = require("fs")
 const port = 1414
-const key = "Ваш 'токен'"
+const key = "ключ"
 const logsPath = "logs/"
 const usersPath = "users/"
 const users = new Object()
@@ -14,7 +14,7 @@ function getTime(type) {
     let full = new Date()
 
     let day = full.getDate()
-    let month = full.getMonth()
+    let month = full.getMonth() + 1
     let year = full.getFullYear()
 
     let hour = full.getHours()
@@ -102,6 +102,7 @@ function reg(user, server) {
     users[user].feedback = "none"
     users[user].foodTime = 0
     users[user].banned = "false"
+    users[user].eula = "false"
 
     updateUser(user)
 }
@@ -109,7 +110,6 @@ function reg(user, server) {
 function login(user, server) {
     if (users[user]) {
         if (!users[user].balance[server]) {
-            console.log(server)
             users[user].balance[server] = 0
         }
         log("User login " + user)
@@ -133,7 +133,7 @@ function responseHandler(url, response) {
             let method = url.match(/&method=([a-zA-Z]+)/u)
 
             if (method && method[1]) {
-                if (method[1] == "login" || method[1] == "update") {
+                if (method[1] == "login" || method[1] == "update" || method[1] == "get" || method[1] == "ban" || method[1] == "pardon" || method[1] == "delFeedback" || method[1] == "delete") {
                     let user = url.match(/&user=([a-zA-Zа-яА-Я0-9_]+)/u)
                     let operationLog = url.match(/&log=([^&]*)/u)
 
@@ -148,7 +148,7 @@ function responseHandler(url, response) {
                         if (method[1] == "login") {
                             let feedbacks = "feedbacks="
                             login(user[1], server[1])
-                            response.write("balance=" + users[user[1]].balance[server[1]] + ";transactions=" + users[user[1]].transactions + ";lastLogin=" + users[user[1]].lastLogin + ";regTime=" + users[user[1]].regTime + ";feedback=" + users[user[1]].feedback + ";foodTime=" + users[user[1]].foodTime + ";banned=" + users[user[1]].banned + ";")
+                            response.write("balance=" + users[user[1]].balance[server[1]] + ";transactions=" + users[user[1]].transactions + ";lastLogin=" + users[user[1]].lastLogin + ";regTime=" + users[user[1]].regTime + ";feedback=" + users[user[1]].feedback + ";foodTime=" + users[user[1]].foodTime + ";banned=" + users[user[1]].banned + ";eula=" + users[user[1]].eula + ";")
 
                             for (userFeedback in users) {
                                 if (users[userFeedback].feedback != "none") {
@@ -165,14 +165,45 @@ function responseHandler(url, response) {
                             let transactions = url.match(/&transactions=(\d+)/u)
                             let feedback = url.match(/&feedback=([^&]*)/u)
                             let foodTime = url.match(/&foodTime=(\d+)/u)
+                            let eula = url.match("&eula=true")
 
                             users[user[1]].balance[server[1]] = balance ? Number(balance[1]) : users[user[1]].balance[server[1]]
                             users[user[1]].transactions = transactions ? Number(transactions[1]) : users[user[1]].transactions
                             users[user[1]].feedback = feedback ? feedback[1] : users[user[1]].feedback
                             users[user[1]].foodTime = foodTime ? Number(foodTime[1]) : users[user[1]].foodTime
+                            users[user[1]].eula = eula ? "true" : "false"
 
                             updateUser(user[1])
                             response.write("Update successful")
+                        } else {
+                            if (!users[user[1]]) {
+                                response.write("User " + user[1] + " not found")
+                            } else if (method[1] == "get") {
+                                if (users[user[1]]) {
+                                    response.write("balance=" + users[user[1]].balance[server[1]] + ";transactions=" + users[user[1]].transactions + ";lastLogin=" + users[user[1]].lastLogin + ";regTime=" + users[user[1]].regTime + ";feedback=" + users[user[1]].feedback + ";foodTime=" + users[user[1]].foodTime + ";banned=" + users[user[1]].banned + ";eula=" + users[user[1]].eula + ";")
+                                }
+                            } else if (method[1] == "ban") {
+                                users[user[1]].banned = "true"
+                                response.write("Banned!")
+                                updateUser(user[1])
+                            } else if (method[1] == "pardon") {
+                                users[user[1]].banned = "false"
+                                response.write("Pardon...")
+                                updateUser(user[1])
+                            } else if (method[1] == "delFeedback") {
+                                users[user[1]].feedback = "none"
+                                response.write("Deleted!")
+                                updateUser(user[1])
+                            } else if (method[1] == "delete") {
+                                delete users[user[1]]
+                                response.write("Deleted!")
+
+                                try {
+                                    fs.unlinkSync(usersPath + user[1] + ".txt")
+                                } catch(err) {
+                                    log(err)
+                                }
+                            }
                         }
 
                         console.log(users[user[1]])
@@ -180,6 +211,8 @@ function responseHandler(url, response) {
                         response.write("Invalid user")
                         log("Invalid user")
                     }
+                } else if (method[1] == "test") {
+                    response.write("OK")
                 } else {
                     response.write("Method " + method[1] + " not found")
                     log("Method " + method[1] + " not found")
