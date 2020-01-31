@@ -83,26 +83,33 @@ local function insert(fingerprint, count)
     end
 end
 
-items = load("return " .. request("https://raw.githubusercontent.com/BrightYC/RipMarket/master/items.lua"))()
+local data = request("https://raw.githubusercontent.com/BrightYC/RipMarket/master/items.lua")
+local chunk, err = load("return " .. data, "=items.lua", "t")
+if not chunk then 
+    error("Неправильно сконфигурирован файл вещей! " .. err)
+else
+    items = chunk()
+end
 
 while true do 
-    for item = 1, #items.market do 
-    	if items.market[item].needed and import.getItemDetail({dmg=0.0,id="minecraft:wooden_hoe"}) then
-    		print("Scanning " .. items.market[item].text .. "...")
-    		local importCount = getAllItemCount(items.market[item].fingerprint, false, import)
+    for item = 1, #items.shop do 
+    	if items.shop[item].needed and import.getItemDetail({dmg=0.0,id="minecraft:wooden_hoe"}) then
+    		print("Scanning " .. items.shop[item].text .. "...")
+    		local importCount = getAllItemCount(items.shop[item].fingerprint, false, import)
 
-    		if importCount < items.market[item].needed then
-    			local needed = items.market[item].needed - importCount
-    			local exportCount, fingerprints = getAllItemCount(items.market[item].fingerprint, needed, export)
+    		if importCount < items.shop[item].needed then
+    			local needed = items.shop[item].needed - importCount
+    			local exportCount, fingerprints = getAllItemCount(items.shop[item].fingerprint, needed, export)
+                local allExportCount = getAllItemCount(items.shop[item].fingerprint, false, export)
 
-    			if items.market[item].buffer and needed < items.market[item].buffer or not items.market[item].buffer then
-    				print("Need item (import - " .. needed .. ") - index " .. items.market[item].text .. ", exporting...")
+    			if items.shop[item].buffer and (allExportCount - needed) >= items.shop[item].buffer or not items.shop[item].buffer then
+    				print("Need item (import - " .. needed .. ") - index " .. items.shop[item].text .. ", exporting...")
 
     				for i = 1, #fingerprints do 
     					pcall(insert, fingerprints[i].fingerprint, fingerprints[i].count)
     				end
     			else
-    				print("Need item (export) - index " .. items.market[item].text .. "...")
+    				print("Need item (export) - index " .. items.shop[item].text .. "...")
     			end
     		end
     	end
