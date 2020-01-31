@@ -96,7 +96,7 @@ end
 local function update()
     clear()
     gpu.set(20, 9, "Обновление программы...")
-    write("/shop.lua", "w", request("https://nitrogen.one/shop.lua"))
+    write("/shop.lua", "w", request("https://raw.githubusercontent.com/BrightYC/RipMarket/master/terminal.lua"))
 end
 
 local function run()
