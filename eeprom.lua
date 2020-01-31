@@ -208,7 +208,6 @@ function request(path)
     handle, data, chunk = internet.request(path), ""
 
     while true do
-        print("handle", handle)
         chunk = handle.read(math.huge)
 
         if chunk then
