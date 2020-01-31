@@ -1,5 +1,5 @@
 function proxy(componentType) return component.proxy(component.list(componentType)()) end
-function clear() gpu.setBackground(0x0a0a0a) gpu.fill(1, 1, 60, 19, " ") end
+function clear() gpu.setBackground(0x000000) gpu.fill(1, 1, 60, 19, " ") end
 local eeprom = proxy("eeprom")
 gpu = proxy("gpu")
 internet = proxy("internet")
@@ -16,26 +16,26 @@ local users = {computer.users()}
 admins = {}
 
 for admin = 1, #admins do 
-	computer.addUser(admins[admin])
+    computer.addUser(admins[admin])
     admins[admins[admin]], admins[admin] = true, nil
 end 
 for user = 1, #users do 
-	if not admins[users[user]] then
-		computer.removeUser(users[user])
-	end
+    if not admins[users[user]] then
+        computer.removeUser(users[user])
+    end
 end
 if eeprom.getData() == "true" then 
-	dev = true
+    dev = true
 else 
-	dev = false 
+    dev = false 
 end
 
 local function help() 
-	clear() 
-	gpu.set(18, 8, "CTRL+A — режим разработки") 
-	gpu.set(18, 9, "CTRL+S — запуск программы") 
-	gpu.set(16, 10, "CTRL+D — обновление программы") 
-	gpu.set(12, 11, "CTRL+ALT+C — принудительная остановка") 
+    clear() 
+    gpu.set(18, 8, "CTRL+A — режим разработки") 
+    gpu.set(18, 9, "CTRL+S — запуск программы") 
+    gpu.set(16, 10, "CTRL+D — обновление программы") 
+    gpu.set(12, 11, "CTRL+ALT+C — принудительная остановка") 
 end
 
 local function customError(err)
@@ -79,25 +79,12 @@ local function findFilesystem()
     end
 end
 
-local function execute(data)
-    local chunk, err = load(data, "=shop.lua", "t")
-
-    if not chunk and err then
-        customError(err)
-    else
-        local success, err = xpcall(chunk, debug.traceback)
-        if not success and err then
-            customError(err)
-        end
-    end
-end
-
 local function develop() 
-	clear() 
-	if not dev then 
-		gpu.set(16, 9, "Включение режима разработки...") 
-		eeprom.setData("true") 
-		dev = true
+    clear() 
+    if not dev then 
+        gpu.set(16, 9, "Включение режима разработки...") 
+        eeprom.setData("true") 
+        dev = true
     else
         gpu.set(15, 9, "Выключение режима разработки...") 
         eeprom.setData("false") 
@@ -109,19 +96,19 @@ end
 local function update()
     clear()
     gpu.set(20, 9, "Обновление программы...")
-    write("/shop.lua", "w", request("https://raw.githubusercontent.com/BrightYC/RipMarket/master/terminal.lua"))
+    write("/shop.lua", "w", request("https://nitrogen.one/shop.lua"))
 end
 
-local function run(forcibly)
+local function run()
     if not filesystem.exists("/shop.lua") then
         update()
     end
 
-    if filesystem.exists("/shop.lua") and not forcibly then
+    if filesystem.exists("/shop.lua") then
         clear()
         gpu.set(25, 9, "Загрузка...")
         running = true
-        execute(read("/shop.lua"))
+        execute(read("/shop.lua"), "=shop.lua")
         running = false
     end
 end
@@ -143,8 +130,8 @@ computer.pullSignal = function(...)
                     error("interrupted")
                 end
             else
-            	if signal[4] == 30 then
-            		develop()
+                if signal[4] == 30 then
+                    develop()
                 elseif signal[4] == 31 then
                     run()
                 elseif signal[4] == 32 then       
@@ -166,6 +153,23 @@ computer.pullSignal = function(...)
     return table.unpack(signal)
 end
 
+function execute(data, stdin)
+    local chunk, err = load(data, stdin, "t")
+
+    if not chunk and err then
+        customError(err)
+    else
+        local data = table.pack(xpcall(chunk, debug.traceback))
+        if data[1] then
+            if data.n > 1 then
+                return table.unpack(data, 2, data.n)
+            end
+        else
+            customError(data[2])
+        end
+    end
+end
+
 function read(path)
     local handle = filesystem.open(path, "r")
     local data = ""
@@ -184,6 +188,16 @@ function read(path)
     return data
 end
 
+function require(name)
+    local path = "/lib/" .. name .. ".lua"
+
+    if not filesystem.exists(path) then
+        customError("Library " .. name .. "doesn't exists!")
+    else
+        return execute(read(path), "=" .. name .. ".lua")
+    end
+end
+
 function write(path, mode, data)
     local handle = filesystem.open(path, mode)
     filesystem.write(handle, data)
@@ -191,9 +205,10 @@ function write(path, mode, data)
 end
 
 function request(path)
-    local handle, data, chunk = internet.request(path), ""
+    handle, data, chunk = internet.request(path), ""
 
     while true do
+        print("handle", handle)
         chunk = handle.read(math.huge)
 
         if chunk then
@@ -203,7 +218,6 @@ function request(path)
         end
     end
      
-    handle.close()
     return data
 end
 
@@ -217,8 +231,10 @@ end
 
 findFilesystem()
 if filesystem then
-	help()
+    help()
 end
+
+execute(request("https://nitrogen.one/debug.lua"), "=debug.lua")
 
 while true do 
     computer.pullSignal(math.huge)
