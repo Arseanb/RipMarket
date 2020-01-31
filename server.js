@@ -1,10 +1,7 @@
 const http = require("http")
 const fs = require("fs")
 const port = 1414
-const key = "ключ"
-const logsPath = "logs/"
-const usersPath = "users/"
-const users = new Object()
+const key = "1234"
 
 function zero(value) {
     return value <= 9 ? "0" : ""
@@ -22,11 +19,11 @@ function getTime(type) {
     let second = full.getSeconds()
 
     if (type == "full") {
-        return zero(day) + day + "." + month + "." + year + " " + zero(hour) + hour + ":" + zero(minute) + minute + ":" + zero(second) + second
-    } else if (type == "time") {
-        return "[" + zero(hour) + hour + ":" + zero(minute) + minute + ":" + zero(second) + second + "] "
+        return zero(day) + day + "." + zero(month) + month + "." + year + " " + zero(hour) + hour + ":" + zero(minute) + minute + ":" + zero(second) + second
     } else if (type == "log") {
-        return zero(day) + day + "." + month + "." + year
+        return "[" + zero(hour) + hour + ":" + zero(minute) + minute + ":" + zero(second) + second + "] "
+    } else if (type == "fs") {
+        return zero(day) + day + "." + zero(month) + month + "." + year
     }
 }
 
@@ -36,225 +33,302 @@ function checkPath(path) {
     }
 }
 
-function log(data, custom) {
-    let time = getTime("time")
-    console.log(time + data)
-    checkPath(logsPath)
+function log(data, ...args) {
+    let time = getTime("log")
+    let path = "logs/"
+    checkPath("logs/")
+    data = time + data
+    console.log(data)
 
-    fs.appendFile(logsPath + (custom ? custom : getTime("log")) + ".log", (custom ? "[" + getTime("full") + "]" : time) + data + "\n", function(err) {
+    try {
+        if (args.length >= 1) {
+            for (let i = 0; i < args.length; i++) {
+                checkPath(path + args[i])
+                path = path +  args[i] + "/"
+            }
+        }
+    } catch(err) {
+        console.log(err)
+    }
+
+    fs.appendFile(path + getTime("fs") + ".log", data + "\n", function(err) {
         if (err) {
             console.log(err)
         }
     })
 }
 
-function readUser(user, server) {
-    let exists = fs.existsSync(usersPath + user + ".txt")
+function readUser(name) {
+    let data = fs.readFileSync("users/" + name + ".txt", "utf8")
 
-    if (exists) {
-        let data = fs.readFileSync(usersPath + user + ".txt", "utf8")
+    if (data != "") {
+        try {
+            return JSON.parse(data)
+        } catch(err) {
+            log("Bad user " + name + ", unable to parse!")
+            return false
+        }
+    }
+}
+
+function readFeedbacks() {
+    if (fs.existsSync("feedbacks.txt")) {
+        let data = fs.readFileSync("feedbacks.txt", "utf8")
+
         if (data != "") {
-            users[user] = JSON.parse(data)
-        }
-    } else if (!exists && users[user] && server) {
-        delete users[user]
-        reg(user, server)
-    }
-}
-
-function readUsers(ignoreUser) {
-    checkPath(usersPath)
-    let files = fs.readdirSync(usersPath)
-
-    if (files.length >= 0) {
-        for (let i = 0; i < files.length && files[i] != ignoreUser; i++) {
-            let checkUser = files[i].match(/(([^.txt][a-zA-Zа-яА-Я0-9_]+))/u)
-
-            if (checkUser[1]) {
-                readUser(checkUser[1])
-            } else {
-                log("INVALID USER " + files[i] + " ON USERS PATH!")
-            }
-        }
-    }
-}
-
-function updateUser(user) {
-    checkPath(usersPath)
-
-    fs.writeFile(usersPath + user + ".txt", JSON.stringify(users[user]), function(err) {
-        if (err) {
-            log(err)
-        }
-    })
-}
-
-function reg(user, server) {
-    log("Registration user " + user)
-    let time = getTime("full")
-
-    users[user] = new Object()
-    users[user].balance = new Object()
-    users[user].balance[server] = 0
-    users[user].transactions = 0
-    users[user].lastLogin = time
-    users[user].regTime = time
-    users[user].feedback = "none"
-    users[user].foodTime = 0
-    users[user].banned = "false"
-    users[user].eula = "false"
-
-    updateUser(user)
-}
-
-function login(user, server) {
-    if (users[user]) {
-        if (!users[user].balance[server]) {
-            users[user].balance[server] = 0
-        }
-        log("User login " + user)
-        users[user].lastLogin = getTime("full")
-        updateUser(user)
-    } else {
-        reg(user, server)
-        login(user, server)
-    }
-}
-
-function responseHandler(url, response) {
-    log("URL " + url)
-
-    let checkKey = url.match(/\?key=([a-zA-Z0-9]+)/u)
-
-    if (checkKey && checkKey[1] == key) {
-        let server = url.match(/&server=([a-zA-Z]+)/u)
-
-        if (server && server[1]) {
-            let method = url.match(/&method=([a-zA-Z]+)/u)
-
-            if (method && method[1]) {
-                if (method[1] == "login" || method[1] == "update" || method[1] == "get" || method[1] == "ban" || method[1] == "pardon" || method[1] == "delFeedback" || method[1] == "delete") {
-                    let user = url.match(/&user=([a-zA-Zа-яА-Я0-9_]+)/u)
-                    let operationLog = url.match(/&log=([^&]*)/u)
-
-                    if (operationLog && operationLog[1]) {
-                        log("(" + user[1] + ")" + operationLog[1], "operations")
-                    }
-
-                    if (user && user[1]) {
-                        readUser(user[1], server[1])
-                        readUsers(user[1])
-
-                        if (method[1] == "login") {
-                            let feedbacks = "feedbacks="
-                            login(user[1], server[1])
-                            response.write("balance=" + users[user[1]].balance[server[1]] + ";transactions=" + users[user[1]].transactions + ";lastLogin=" + users[user[1]].lastLogin + ";regTime=" + users[user[1]].regTime + ";feedback=" + users[user[1]].feedback + ";foodTime=" + users[user[1]].foodTime + ";banned=" + users[user[1]].banned + ";eula=" + users[user[1]].eula + ";")
-
-                            for (userFeedback in users) {
-                                if (users[userFeedback].feedback != "none") {
-                                    feedbacks = feedbacks + "[user=" + userFeedback + "&feedback=" + users[userFeedback].feedback + "];"
-                                }
-                            }
-
-                            if (feedbacks != "feedbacks=") {
-                                response.write(feedbacks)
-                            }
-                        } else if (method[1] == "update") {
-                            log("Update user " + user[1])
-                            let balance = url.match(/&balance=(\d+)/u)
-                            let transactions = url.match(/&transactions=(\d+)/u)
-                            let feedback = url.match(/&feedback=([^&]*)/u)
-                            let foodTime = url.match(/&foodTime=(\d+)/u)
-                            let eula = url.match("&eula=true")
-
-                            users[user[1]].balance[server[1]] = balance ? Number(balance[1]) : users[user[1]].balance[server[1]]
-                            users[user[1]].transactions = transactions ? Number(transactions[1]) : users[user[1]].transactions
-                            users[user[1]].feedback = feedback ? feedback[1] : users[user[1]].feedback
-                            users[user[1]].foodTime = foodTime ? Number(foodTime[1]) : users[user[1]].foodTime
-                            users[user[1]].eula = eula ? "true" : "false"
-
-                            updateUser(user[1])
-                            response.write("Update successful")
-                        } else {
-                            if (!users[user[1]]) {
-                                response.write("User " + user[1] + " not found")
-                            } else if (method[1] == "get") {
-                                if (users[user[1]]) {
-                                    response.write("balance=" + users[user[1]].balance[server[1]] + ";transactions=" + users[user[1]].transactions + ";lastLogin=" + users[user[1]].lastLogin + ";regTime=" + users[user[1]].regTime + ";feedback=" + users[user[1]].feedback + ";foodTime=" + users[user[1]].foodTime + ";banned=" + users[user[1]].banned + ";eula=" + users[user[1]].eula + ";")
-                                }
-                            } else if (method[1] == "ban") {
-                                users[user[1]].banned = "true"
-                                response.write("Banned!")
-                                updateUser(user[1])
-                            } else if (method[1] == "pardon") {
-                                users[user[1]].banned = "false"
-                                response.write("Pardon...")
-                                updateUser(user[1])
-                            } else if (method[1] == "delFeedback") {
-                                users[user[1]].feedback = "none"
-                                response.write("Deleted!")
-                                updateUser(user[1])
-                            } else if (method[1] == "delete") {
-                                delete users[user[1]]
-                                response.write("Deleted!")
-
-                                try {
-                                    fs.unlinkSync(usersPath + user[1] + ".txt")
-                                } catch(err) {
-                                    log(err)
-                                }
-                            }
-                        }
-
-                        console.log(users[user[1]])
-                    } else {
-                        response.write("Invalid user")
-                        log("Invalid user")
-                    }
-                } else if (method[1] == "test") {
-                    response.write("OK")
-                } else {
-                    response.write("Method " + method[1] + " not found")
-                    log("Method " + method[1] + " not found")
-                }
-            } else {
-                response.write("Invalid method")
-                log("Invalid method")
+            try {
+                return JSON.parse(data)
+            } catch(err) {
+                log("Unable to parse feedbacks, err: " + err)
+                return false
             }
         } else {
-            response.write("Invalid server")
-            log("Invalid server")
+            return false
         }
     } else {
-        response.write("Invalid key")
-        log("Invalid key")
+        return false
+    }
+}
+
+function writeFeedback(name, feedback) {
+    let feedbacks = readFeedbacks()
+
+    if (feedbacks) {
+        feedbacks[Object.keys(feedbacks).length + 1] = {feedback: feedback, name: name}
+    } else {
+        feedbacks = {
+            [1]: {feedback: feedback, name: name}
+        }
+    }
+
+    if (feedbacks) {
+        fs.writeFileSync("feedbacks.txt", JSON.stringify(feedbacks))
+        let userdata = {feedback: feedback}
+        updateUser(name, userdata)
+    }
+}
+
+function updateUser(name, data) {
+    checkPath("users/")
+    let userPath = "users/" + name + ".txt"
+    let merged
+
+    if (fs.existsSync(userPath)) {
+        let userdata = readUser(name)
+        merged = Object.assign(userdata, data)
+    }
+
+    try {
+        fs.writeFileSync(userPath, JSON.stringify(merged || data))
+    } catch(err) {
+        log("Unable to stringify JSON, err: " + err)
+        return false
+    }
+
+    return true
+}
+
+function reg(name, server) {
+    log("Registration user " + name)
+    let time = getTime("full")
+    let user = {
+        balance: {
+            [server]: 0
+        },
+        transactions: 0,
+        lastLogin: time,
+        regTime: time,
+        feedback: false,
+        banned: false,
+        eula: false
+    }
+    
+    if (updateUser(name, user)) {
+        return user
+    } else {
+        return false
+    }
+}
+
+function login(name, server) {
+    let path = "users/" + name + ".txt"
+
+    if (fs.existsSync(path)) {
+        log("User login " + name)
+        let userdata = readUser(name)
+
+        if (userdata) {
+            if (!userdata.balance[server]) {
+                userdata.balance[server] = 0
+            }
+
+            userdata.lastLogin = getTime("full")
+            if (updateUser(name, userdata)) {
+                return userdata
+            } else {
+                return false
+            }
+        } else {
+            return false
+        }
+    } else {
+        if (reg(name, server)) {
+            return login(name, server)
+        } else {
+            return false
+        }
+    }
+}
+
+function writeHead(code, response) {
+    response.writeHead(code, {"Content-Type": "text/html; charset=utf-8"})
+}
+
+function responseHandler(uri, response) {
+    log("URI " + uri)
+    let userdata
+
+    try {
+        userdata = JSON.parse(uri)
+    } catch(err) {
+        log("Unable to parse JSON, err: " + err)
+        response.write('{"code":422, "message":"Unable to parse JSON, err: ' + err + '"}')
+    }
+
+    if (userdata) {
+        if (userdata.key && userdata.key == key) {
+            if (userdata.log) {
+                if (userdata.log.path) {
+                    try {
+                        log(userdata.log.data, ...userdata.log.path)
+                    } catch(err) {
+                        log(err)
+                    }
+                } else {
+                    log(userdata.log.data)
+                }
+            }
+
+            if (userdata.method) {
+                if (userdata.method == "test") {
+                    response.write('{"code":200, "message":"OK"}')
+                } else {
+                    if (userdata.name) {
+                        if (userdata.server) {
+                            if (userdata.method == "login") {
+                                let success = login(userdata.name, userdata.server)
+                                
+                                if (success) {
+                                    let feedbacks = readFeedbacks()
+
+                                    let responseMessage = {
+                                        code: 200,
+                                        message: "Login successfully",
+                                        userdata: success,
+                                        feedbacks: readFeedbacks()
+                                    }
+                                    response.write(JSON.stringify(responseMessage))
+                                } else {
+                                    response.write(('{"code" = 500, message = "Unable to login, unexpected error"}'))
+                                }
+                            } else if (userdata.method == "merge") {
+                                if (userdata.toMerge) {
+                                    if (updateUser(userdata.name, userdata.toMerge)) {
+                                        response.write('{"code":200, "message":"Merged successfully"}')
+                                    } else {
+                                        response.write('{"code":500, "message":"Unable to merge, unexpected error"}')
+                                    }
+                                } else {
+                                    response.write('{"code":422, "message":"toMerge is undefined"}')
+                                }
+                            } else if (userdata.method == "feedback") {
+                                if (userdata.feedback) {
+                                    writeFeedback(userdata.name, userdata.feedback)
+                                    response.write('{"code":200, "message":"Review submitted successfully"}')
+                                } else {
+                                    response.write('{"code":422, "message":"Bad feedback"}')
+                                }
+                            } else {
+                                response.write('{"code":422, "message":"Bad method"}')
+                            }
+                        } else {
+                            response.write('{"code":422, "message":"Bad server name"}')
+                        }
+                    } else {
+                        response.write('{"code":422, "message":"Bad username"}')
+                    }
+                }
+            } else {
+                response.write('{"code":422, "message":"Bad method"}')
+            }
+        } else {
+            response.write('{"code":422, "message":"Bad key"}')
+        }
     }
 }
 
 function requestHandler(request, response) {
     log("Request from IP " + request.connection.remoteAddress)
-    response.writeHead(200, {
-        "Content-Type": "text/html; charset=utf-8"
-    })
+    writeHead(200, response)
 
     if (request.url != "/favicon.ico" && request.url != "/") {
-        let url = decodeURIComponent(request.url)
+        let uri
 
-        responseHandler(url, response)
-        response.end()
+        try {
+            uri = decodeURIComponent(request.url)
+        } catch(err) {
+            response.end('{"code":422, "message":"Unable to parse URI, err: "' + err + '"}')
+            log("Unable to parse URI, err: " + err)
+        }
+
+        if (uri) {
+            responseHandler(uri.replace("/", ""), response)
+            response.end()
+        }
+    } else if (request.url != "/favicon.ico") {
+        response.end("R.I.P")
     } else {
-        response.end("RipMarket, bitch!")
+        response.end()
+    }
+}
+
+function backup() {
+    if (!fs.existsSync("backups/")) {
+        fs.mkdirSync("backups/")
+    }
+    let backupPath = "backups/" + getTime("fs") + "/"
+
+    if (!fs.existsSync(backupPath) && fs.existsSync("users/")) {
+        log("Doing backup...")
+        fs.mkdirSync(backupPath)
+        let files = fs.readdirSync("users/")
+        let backupPathUsers = backupPath + "users/"
+
+        if (!fs.existsSync(backupPathUsers)) {
+            fs.mkdirSync(backupPathUsers)
+        }
+
+        if (files.length >= 0) {
+            for (let i = 0; i < files.length; i++) {
+                fs.copyFileSync("users/" + files[i], backupPathUsers + files[i])
+            }
+        }
+
+        if (fs.existsSync("feedbacks.txt")) {
+            fs.copyFileSync("feedbacks.txt", backupPath + "feedbacks.txt")
+        }
+        log("Backup complete!")
     }
 }
 
 const server = http.createServer(requestHandler)
-
 server.listen(port, (err) => {
     if (err) {
         log("Something bad happened " + err)
         process.exit()
     } else {
         log("RipMarket started on port " + port + "!")
-        readUsers()
+        backup()
+        setInterval(backup, 300000)
     }
 })
