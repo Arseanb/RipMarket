@@ -286,7 +286,7 @@ local function encodeString(str)
 end
 
 local function downloadItems()
-    local data = request("https://ссылка-на-айтемы/items.lua")
+    local data = request("https://raw.githubusercontent.com/BrightYC/RipMarket/master/items.lua")
     local chunk, err = load("return " .. data, "=items.lua", "t")
     if not chunk then 
         error("Неправильно сконфигурирован файл вещей! " .. err)
