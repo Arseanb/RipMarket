@@ -17,7 +17,7 @@ local me_side = "DOWN"
 local pim_side = "UP"
 local server = "test"
 local version, port = "modem", 1414
-local serverAddress = ""
+local serverAddress = "fcabde99-508f-4115-abd0-1406d4c404d2"
 
 local priceLottery = 150
 local superPrize = 10000
@@ -337,7 +337,7 @@ local function requestWithData(log, data, forceKey)
         end
     elseif version == "modem" then
         modem.send(serverAddress, port, serialization.serialize(data))
-        local response = {pull(.3, "modem_message")}
+        local response = {pull(3, "modem_message")}
 
         if response and response[3] == serverAddress and port == response[4] then
             local data, err = serialization.unserialize(response[6])
@@ -1299,7 +1299,7 @@ function login(name)
                     if response.code == 200 then
                         log("Авторизация игрока " .. name)
 
-                        if response.banned then
+                        if response.userdata.banned then
                             blackList(name)
                             unAuth = true
                         else
