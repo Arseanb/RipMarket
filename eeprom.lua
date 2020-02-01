@@ -192,7 +192,7 @@ function require(name)
     local path = "/lib/" .. name .. ".lua"
 
     if not filesystem.exists(path) then
-        customError("Library " .. name .. "doesn't exists!")
+        customError("Library " .. name .. " doesn't exists!")
     else
         return execute(read(path), "=" .. name .. ".lua")
     end
