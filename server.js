@@ -27,23 +27,22 @@ function getTime(type) {
     }
 }
 
-function checkPath(path) {
-    if (!fs.existsSync(path)) {
-        fs.mkdirSync(path)
+function checkDir(dir) {
+    if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir)
     }
 }
 
 function log(data, ...args) {
-    let time = getTime("log")
     let path = "logs/"
-    checkPath("logs/")
-    data = time + data
+    data = getTime("log") + data
+    checkDir("logs/")
     console.log(data)
 
     try {
         if (args.length >= 1) {
             for (let i = 0; i < args.length; i++) {
-                checkPath(path + args[i])
+                checkDir(path + args[i])
                 path = path +  args[i] + "/"
             }
         }
@@ -109,7 +108,7 @@ function writeFeedback(name, feedback) {
 }
 
 function updateUser(name, data) {
-    checkPath("users/")
+    checkDir("users/")
     let userPath = "users/" + name + ".txt"
     let merged
 
