@@ -205,7 +205,7 @@ function write(path, mode, data)
 end
 
 function request(path)
-    handle, data, chunk = internet.request(path), ""
+    local handle, data, chunk = internet.request(path), ""
 
     while true do
         chunk = handle.read(math.huge)
