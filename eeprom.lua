@@ -11,7 +11,6 @@ clear()
 gpu.set(23, 9, "Инициализация...")
 
 local running = false
-
 local users = {computer.users()}
 admins = {}
 
