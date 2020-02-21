@@ -286,7 +286,7 @@ local function encodeString(str)
 end
 
 local function downloadItems()
-    local data = request("https://raw.githubusercontent.com/BrightYC/RipMarket/master/items.lua")
+    local data = request("https://nitrogen.one/items.lua")
     local chunk, err = load("return " .. data, "=items.lua", "t")
     if not chunk then 
         error("Неправильно сконфигурирован файл вещей! " .. err)
@@ -732,12 +732,7 @@ end
 
 local function inputCursor(write, active, force)
     if writes[write].cursor and (force or computer.uptime() >= writes[write].cursorTime) then
-        if writes[write].len < writes[write].width then
-            cursorBlink(write, writes[write].x + writes[write].len, active)
-        else
-            cursorBlink(write, writes[write].x + writes[write].width - 1, active)
-        end
-
+        cursorBlink(write, writes[write].x + writes[write].len - writes[write].pos, active)
         writes[write].cursorState = active
         writes[write].cursorTime = computer.uptime() + .5
     end
@@ -796,7 +791,15 @@ local function inputWrite(write, char)
         end
     end
 
-    if char == 13 then
+    if char == 203 and writes[write].cursor then
+        if writes[write].pos - 1 ~= -1 then
+            writes[write].pos = writes[write].pos - 1
+        end
+    elseif char == 205 and writes[write].cursor then
+        if writes[write].pos + 1 ~= writes[write].border then
+            writes[write].pos = writes[write].pos + 1
+        end
+    elseif char == 13 then
         if writes[write].actionOnEnter then 
             writes[write].actionOnEnter()
         end
@@ -805,15 +808,27 @@ local function inputWrite(write, char)
         end
     elseif checkWrite and writes[write].len + 1 ~= writes[write].border and not writes[write].onlyClear then
         local symbol = unicode.char(char)
-        writes[write].input = writes[write].input .. symbol
+        if writes[write].pos ~= writes[write].len then
+            local beforeInput, afterInput = unicode.sub(1, writes[write].pos), unicode.sub(writes[write].pos, writes[write].len)
+            writes[write].input = beforeInput .. symbol .. afterInput
+        else
+            writes[write].input = writes[write].input .. symbol
+        end
         writes[write].len = writes[write].len + 1
+        writes[write].pos = write[write].pos + 1
 
         drawText(write, true)
         inputFunction(write, char)
         inputCursor(write, true, true)
     elseif char == 8 and writes[write].len - 1 ~= -1 then
-        writes[write].input = unicode.sub(writes[write].input, 1, writes[write].len - 1)
+        if writes[write].pos ~= writes[write].len then
+            local beforeInput, afterInput = unicode.sub(1, writes[write].pos - 1), unicode.sub(writes[write].pos, writes[write].len)
+            writes[write].input = beforeInput .. afterInput
+        else
+            writes[write].input = unicode.sub(writes[write].input, 1, writes[write].len - 1)
+        end
         writes[write].len = writes[write].len - 1
+        writes[write].pos = write[write].pos - 1
 
         if writes[write].strictNumber and writes[write].input == "" then
             set(writes[write].x, writes[write].y, "0", color.activeBackground, color.activeForeground)
@@ -1017,8 +1032,12 @@ local function playLottery()
         setColorText(nil, 8, "[0x68f029]Вы выиграли: [0xffffff]" .. rip .. " [0x68f029]рипов", color.background)
         local msgToLog = session.name .. " выиграл в лотерее " .. rip .. " рипов"
         log(msgToLog, session.name)
-        session.balance = session.balance + rip
-        requestWithData({data = msgToLog, mPath = "/lottery.log", path = {server, "/lottery"}}, {method = "merge", toMerge = {balance = {[server] = session.balance}, name = session.name}})
+        session.balance = session.balance + rip       
+        local response = requestWithData({data = msgToLog, mPath = "/lottery.log", path = {server, "/lottery"}}, {method = "merge", toMerge = {balance = {[server] = session.balance}}, name = session.name})
+        if not response or response.code ~= 200 then
+            log("Произошла ошибка при пополнении баланса: " .. (response and response.message and tostring(response.message) or "нет ответа от сервера"), session.name)
+            alert({"Внимание! Баланс не пополен,", "обратитесь к администрации!"})
+        end
         sleep(.5)
         balance(1)
         fill(1, 10, 60, 1, " ", color.background)
@@ -1135,13 +1154,18 @@ local function acceptFeedback()
         table.insert(session.feedbacks, {name = session.name, feedback = writes.feedback.input})
         table.sort(session.feedbacks, sort)
         session.feedback = writes.feedback.input
-        requestWithData({data = msgToLog, mPath = "/feedbacks.log", path = {server, "/feedbacks"}}, {method = "feedback", feedback = writes.feedback.input, name = session.name})
-        buttons.acceptFeedback.notVisible = true
-        writes.feedback.notVisible = true
-        focus.write = false
-        fill(1, 2, 60, 15, " ", color.background)
-        drawFeedback(1)
-        drawButtons()
+        local response = requestWithData({data = msgToLog, mPath = "/feedbacks.log", path = {server, "/feedbacks"}}, {method = "feedback", feedback = writes.feedback.input, name = session.name})
+        if response and response.code == 200 then
+            buttons.acceptFeedback.notVisible = true
+            writes.feedback.notVisible = true
+            focus.write = false
+            fill(1, 2, 60, 15, " ", color.background)
+            drawFeedback(1)
+            drawButtons()
+        else
+            log("Произошла ошибка при оставлении отзыва: " .. (response and response.message and tostring(response.message) or "нет ответа от сервера"), session.name)
+            alert({"Внимание! Отзыв не оставлен,", "обратитесь к администрации!"})
+        end
     end
 end
 
@@ -1439,6 +1463,7 @@ local function initWrites()
         writes[write].textPosX = math.floor(writes[write].width / 2 - unicode.len(writes[write].text) / 2) + writes[write].x
         writes[write].endX = writes[write].x + writes[write].width - 1
         writes[write].len = 0
+        writes[write].pos = 0
         if writes[write].cursor then
             writes[write].cursorTime = 0
             writes[write].cursorState = false
@@ -1459,10 +1484,11 @@ buttons = {
     info = {buttonIn = {"main"}, disabledBackground = color.background, disabledForeground = color.blackLime, background = color.background, activeBackground = color.background, foreground = color.lime, activeForeground = color.blackLime, text = "[Помощь]", x = 1, y = 19, width = 8, height = 1, action = function() toGui("info") end},
     buy = {buttonIn = {"shop"}, background = color.gray, activeBackground = color.blackGray, foreground = color.lime, activeForeground = color.blackLime, text = "Покупка", x = 19, y = 6, width = 24, height = 3, action = function() toGui("buy") end},
     sell = {buttonIn = {"shop"}, background = color.gray, activeBackground = color.blackGray, foreground = color.lime, activeForeground = color.blackLime, text = "Продажа", x = 19, y = 10, width = 24, height = 3, action = function() toGui("sell") end},
-    nextBuy = {buttonIn = {"buy"}, disabled = true, disabledBackground = color.blackGray, disabledForeground = color.blackOrange, background = color.gray, activeBackground = color.blackGray, foreground = color.orange, activeForeground = color.blackOrange, text = "  Далее  ", x = 50, y = 18, width = 9, height = 1, action = function() buttons.purchase.disabled = true local item = items.shop[lists[focus.list].scrollContent[lists[focus.list].scrollContent.activeIndex].index] toGui("buyItem", {item = item}) guiVariables[guiPath[#guiPath]].amount = 0 end},
-    nextSell = {buttonIn = {"sell"}, disabled = true, disabledBackground = color.blackGray, disabledForeground = color.blackOrange, background = color.gray, activeBackground = color.blackGray, foreground = color.orange, activeForeground = color.blackOrange, text = "  Далее  ", x = 50, y = 18, width = 9, height = 1, action = function() local item = items.shop[lists[focus.list].scrollContent[lists[focus.list].scrollContent.activeIndex].index] toGui("sellItem", {item = item}) end},
+    nextBuy = {buttonIn = {"buy"}, disabled = true, disabledBackground = color.blackGray, disabledForeground = color.blackOrange, background = color.gray, activeBackground = color.blackGray, foreground = color.orange, activeForeground = color.blackOrange, text = "  Далее  ", x = 50, y = 18, width = 9, height = 1, action = function() buttons.purchase.disabled = true item = items.shop[lists[focus.list].scrollContent[lists[focus.list].scrollContent.activeIndex].index] toGui("buyItem", {item = item}) guiVariables[guiPath[#guiPath]].amount = 0 end},
+    nextSell = {buttonIn = {"sell"}, disabled = true, disabledBackground = color.blackGray, disabledForeground = color.blackOrange, background = color.gray, activeBackground = color.blackGray, foreground = color.orange, activeForeground = color.blackOrange, text = "  Далее  ", x = 50, y = 18, width = 9, height = 1, action = function() item = items.shop[lists[focus.list].scrollContent[lists[focus.list].scrollContent.activeIndex].index] toGui("sellItem", {item = item}) end},
     freeFood = {buttonIn = {"other"}, disabledBackground = color.blackGray, disabledForeground = color.blackLime, background = color.gray, activeBackground = color.blackGray, foreground = color.lime, activeForeground = color.blackLime, text = "Бесплатная еда", x = 19, y = 8, width = 24, height = 3, action = function() toGui("freeFood") nextFood() end},
     lottery = {buttonIn = {"other"}, disabledBackground = color.blackGray, disabledForeground = color.blackLime, background = color.gray, activeBackground = color.blackGray, foreground = color.lime, activeForeground = color.blackLime, text = "Лотерея", x = 19, y = 12, width = 24, height = 3, action = function() toGui("lottery") end},
+    alert = {buttonIn = {"alert"}, background = color.gray, activeBackground = color.blackGray, foreground = color.orange, activeForeground = color.blackOrange, text = "Назад", x = 26, y = 15, width = 9, height = 1, action = function() back() end},
 
     zero = {buttonIn = {"buyItem"}, background = color.gray, activeBackground = color.blackGray, foreground = color.orange, activeForeground = color.blackOrange, text = "0", x = 29, y = 15, width = 3, height = 1, action = function() inputWrite("amount", 48) end},
     one = {buttonIn = {"buyItem"}, background = color.gray, activeBackground = color.blackGray, foreground = color.orange, activeForeground = color.blackOrange, text = "1", x = 24, y = 9, width = 3, height = 1, action = function() inputWrite("amount", 49) end},
