@@ -193,8 +193,8 @@ local function log(data, name)
 
     local date = os.date("%d.%m.%Y", timestamp)
     local path = "/logs/" .. date .. "/"
-    local days = {date .. "/", os.date("%d.%m.%Y", timestamp - 86400) .. "/", os.date("%d.%m.%Y", timestamp - 172800) .. "/", os.date("%d.%m.%Y", timestamp - 259200) .. "/"}
-    local data = "[" .. os.date("%H:%M:%S", timestamp) .. "] " .. tostring(data) .. "\n"
+    local days = {date .. "/", os.date("%d.%m.%Y/", timestamp - 86400), os.date("%d.%m.%Y/", timestamp - 172800), os.date("%d.%m.%Y/", timestamp - 259200))
+    local data = os.date("[%H:%M:%S]", timestamp) .. tostring(data) .. "\n"
 
     for day = 1, #days do 
         days[days[day]], days[day] = true, nil
@@ -1032,12 +1032,8 @@ local function playLottery()
         setColorText(nil, 8, "[0x68f029]Вы выиграли: [0xffffff]" .. rip .. " [0x68f029]рипов", color.background)
         local msgToLog = session.name .. " выиграл в лотерее " .. rip .. " рипов"
         log(msgToLog, session.name)
-        session.balance = session.balance + rip       
-        local response = requestWithData({data = msgToLog, mPath = "/lottery.log", path = {server, "/lottery"}}, {method = "merge", toMerge = {balance = {[server] = session.balance}}, name = session.name})
-        if not response or response.code ~= 200 then
-            log("Произошла ошибка при пополнении баланса: " .. (response and response.message and tostring(response.message) or "нет ответа от сервера"), session.name)
-            alert({"Внимание! Баланс не пополен,", "обратитесь к администрации!"})
-        end
+        session.balance = session.balance + rip
+        requestWithData({data = msgToLog, mPath = "/lottery.log", path = {server, "/lottery"}}, {method = "merge", toMerge = {balance = {[server] = session.balance}, name = session.name}})
         sleep(.5)
         balance(1)
         fill(1, 10, 60, 1, " ", color.background)
@@ -1154,18 +1150,13 @@ local function acceptFeedback()
         table.insert(session.feedbacks, {name = session.name, feedback = writes.feedback.input})
         table.sort(session.feedbacks, sort)
         session.feedback = writes.feedback.input
-        local response = requestWithData({data = msgToLog, mPath = "/feedbacks.log", path = {server, "/feedbacks"}}, {method = "feedback", feedback = writes.feedback.input, name = session.name})
-        if response and response.code == 200 then
-            buttons.acceptFeedback.notVisible = true
-            writes.feedback.notVisible = true
-            focus.write = false
-            fill(1, 2, 60, 15, " ", color.background)
-            drawFeedback(1)
-            drawButtons()
-        else
-            log("Произошла ошибка при оставлении отзыва: " .. (response and response.message and tostring(response.message) or "нет ответа от сервера"), session.name)
-            alert({"Внимание! Отзыв не оставлен,", "обратитесь к администрации!"})
-        end
+        requestWithData({data = msgToLog, mPath = "/feedbacks.log", path = {server, "/feedbacks"}}, {method = "feedback", feedback = writes.feedback.input, name = session.name})
+        buttons.acceptFeedback.notVisible = true
+        writes.feedback.notVisible = true
+        focus.write = false
+        fill(1, 2, 60, 15, " ", color.background)
+        drawFeedback(1)
+        drawButtons()
     end
 end
 
