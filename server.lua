@@ -41,6 +41,7 @@ local function log(data, customPath)
 	local path = "/home/logs/" .. os.date("%d.%m.%Y", timestamp)
 	checkPath(path)
 	local data = time .. data
+	print(data)
 
 	if customPath then
 		path = path .. customPath
@@ -72,7 +73,7 @@ local function readUser(name)
 	if userdata then
 		return userdata
 	elseif err then
-		log(err)
+		log("Error on read user, err: " .. err)
 	end
 end
 
@@ -88,7 +89,7 @@ local function readFeedbacks()
 			if feedbacks then
 				return feedbacks
 			elseif err then
-				log(err)
+				log("Error on read feedbacks, err: " .. err)
 			end
 		end
 	end
@@ -135,7 +136,6 @@ local function reg(name, server)
 		balance = {
 			[server] = 0
 		},
-		transactions = 0,
         transactions = 0,
         lastLogin = time,
         regTime = time,
@@ -206,8 +206,9 @@ local function responseHandler(data, address)
 							end
 						elseif userdata.method == "merge" then
 							if userdata.toMerge then
+								print("инфа до мержа")
 								updateUser(userdata.name, userdata.toMerge)
-								send(address, '{code =200, message = "Merged successfully"}')
+								send(address, '{code = 200, message = "Merged successfully"}')
 							else
 								send(address, '{code = 422, message = "toMerge is nil"}')
 							end
@@ -236,7 +237,7 @@ local function responseHandler(data, address)
 			log(logData)
 		end
 	elseif err then
-		send(address, '{code = 422, message = "Unable to parse JSON, err: ' .. err .. '"}')
+		log("Unable to parse table, err: " .. err)
 	end
 end
 
@@ -257,7 +258,6 @@ function start()
 			if modem.open(port) then
 				local success = "RipMarket started on port " .. port .. "!"
 				log(success)
-				print(success)
 				event.listen("modem_message", messageHandler)
 			else
 				io.stderr:write("Unable to open port " .. port)
@@ -283,3 +283,8 @@ function restart()
 		start()
 	end
 end
+
+require("term").clear()
+start()
+pcall(os.sleep, math.huge)
+stop()
