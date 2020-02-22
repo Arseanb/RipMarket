@@ -12,7 +12,7 @@ for file = 1, #files do
         write(files[file].path, "w", request(files[file].link))
     end
 end
-----------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 local me_side = "DOWN"
 local pim_side = "UP"
 local server = "test"
@@ -23,20 +23,20 @@ local priceLottery = 150
 local superPrize = 10000
 local freeFoodCount = 16
 
+local INFO = [[
+[0x68f029]1. [0xffffff]Что это такое? Ответ — Это магазин/обменник. Как угодно.
+[0x68f029]2. [0xffffff]Что такое R.I.P? Ответ — это вымышленная валюта. Это не \nсерверная валюта!
+[0x68f029]3. [0xffffff]Как обменять товар на рипы? Ответ — нужно выбрать товар \n и выбрать режим поиска предметов.
+[0x68f029]4. [0xffffff]Как купить товар? Ответ — выбираете товар, набираете \nкол-во товара, и товар будет добавлен в ваш инвентарь. Если \nденег недостаточно - товар нельзя купить.
+[0x68f029]5. [0xffffff]Как обменять руду? Выбираете режим поиска предметов, и \nруда будет обменена на слитки.
+[0x68f029]6. [0xffffff]Что за режим поиска предметов? Ответ — нажимая на \n"1 слот" магазин ищет предмет в 1 слоте вашего инвентаря. \nВнимание! "Весь инвентарь" — означает что ВЕСЬ ваш инвентарь будет просканирован. Любой предмет выбранный вами(Допустим — алмаз) будет продан из всех слотов!
+[0x68f029]7. [0xffffff]Что будет, если я продам зачарованный(переименованный, \nзаряженный, и т.д) меч/гравик/нано-трусы? Ответ — цена таких вещей равняется стандартному предмету. Будьте внимательны!
+]]
+
 local pim, me, selector, tmpfs, modem = proxy("pim"), proxy("me_interface"), proxy("openperipheral_selector"), component.proxy(computer.tmpAddress())
 local json, serialization = require("json"), require("serialization")
 local terminal = computer.address()
 local key
-
-local INFO = [[
-[0x68f029]1. [0xffffff]Что это такое? Ответ — Это магазин/обменник. Как угодно.
-[0x68f029]2. [0xffffff]Что такое R.I.P? Ответ — это вымышленная валюта. Это не серверная валюта!
-[0x68f029]3. [0xffffff]Как обменять товар на рипы? Ответ — нужно выбрать товар и выбрать режим поиска предметов.
-[0x68f029]4. [0xffffff]Как купить товар? Ответ — выбираете товар, набираете кол-во товара, и товар будет добавлен в ваш инвентарь. Если денег недостаточно - товар нельзя купить.
-[0x68f029]5. [0xffffff]Как обменять руду? Выбираете режим поиска предметов, и руда будет обменена на слитки.
-[0x68f029]6. [0xffffff]Что за режим поиска предметов? Ответ — нажимая на "1 слот" магазин ищет предмет в 1 слоте вашего инвентаря. Внимание! "Весь инвентарь" — означает что ВЕСЬ ваш инвентарь будет просканирован. Любой предмет выбранный вами(Допустим — алмаз) будет продан из всех слотов!
-[0x68f029]7. [0xffffff]Что будет, если я продам зачарованный(переименованный, заряженный, и т.д) меч/гравик/нано-трусы? Ответ — цена таких вещей равняется стандартному предмету. Будьте внимательны!
-]]
 
 local active = true
 local guiPage = 1 
@@ -215,7 +215,7 @@ local function log(data, name)
     if name then
         write(path .. name .. ".log", "a", data)
     else
-        write(path .. "terminal.log", "a", data)
+        write(path .. "main.log", "a", data)
     end
 end
 
@@ -230,50 +230,59 @@ local function sort(a, b)
 end
 
 local function parseInfo()
-    local tag, str, symbols, words, page = false, "", 0, 0, 1
+    local tag, str, symbols, skip, words, page = false, "", 0, 0, 0, 1
 
     for sym = 1, unicode.len(INFO) do 
-        local symbol = unicode.sub(INFO, sym, sym)
-
-        if not ((symbols == 0 or symbols == 60) and symbol == " ") then
-            if symbol == "\n" and symbols > 0 then
+        if skip > 0 then
+            skip = skip - 1
+        else
+            local symbol = unicode.sub(INFO, sym, sym)
+            
+            if symbol == [[\]] and unicode.sub(INFO, sym + 1, sym + 1) == "n" then
                 table.insert(infoList[page], str)
                 table.insert(infoList[page], "\n")
-                str, symbols, words = "", 0, words + 1
-            elseif symbol == "[" then
-                tag = ""
-
-                if str ~= "" then
-                    table.insert(infoList[page], str)
-                    str = ""
-                end
-            elseif symbol == "]" then
-                table.insert(infoList[page], {tonumber(tag)})
-                tag = false
-            elseif tag then
-                tag = tag .. symbol 
-            else 
-                if symbols == 60 then
+                str, symbols, words, skip = "", 0, words + 1, 1
+            elseif not ((symbols == 0 or symbols == 60) and symbol == " ") then
+                if symbol == "\n" and symbols > 0 then
                     table.insert(infoList[page], str)
                     table.insert(infoList[page], "\n")
                     str, symbols, words = "", 0, words + 1
+                elseif symbol == "[" then
+                    tag = ""
+
+                    if str ~= "" then
+                        table.insert(infoList[page], str)
+                        str = ""
+                    end
+                elseif symbol == "]" then
+                    table.insert(infoList[page], {tonumber(tag)})
+                    tag = false
+                elseif tag then
+                    tag = tag .. symbol 
+                else 
+                    if symbols == 60 then
+                        table.insert(infoList[page], str)
+                        table.insert(infoList[page], "\n")
+                        str, symbols, words = "", 0, words + 1
+                    end
+
+                    str = str .. symbol
+                    symbols = symbols + 1 
                 end
 
-                str = str .. symbol
-                symbols = symbols + 1 
-            end
+                if sym == unicode.len(INFO) and str ~= "" then
+                    table.insert(infoList[page], str)
+                end
 
-            if sym == unicode.len(INFO) and str ~= "" then
-                table.insert(infoList[page], str)
-            end
-
-            if words == 13 then
-                page, words = page + 1, 0
-                infoList[page] = {}
+                if words == 13 then
+                    page, words = page + 1, 0
+                    infoList[page] = {}
+                end
             end
         end
     end
 end
+
 
 local function encodeChar(chr)
     return string.format("%%%X", string.byte(chr))
@@ -533,12 +542,12 @@ local function insertItem(fingerprint, count)
     local itemToLog = "id=" .. fingerprint.id .. "|dmg=" .. tostring(fingerprint.dmg)
     local itemsInserted = 0
 
-    if checkPlayer("Был обнаружен другой игрок при попытке вставить предмет: " .. itemToLog) then
+    if checkPlayer("Detected another player!") then
         local checkItem = me.getItemDetail(fingerprint)
 
         if checkItem then
             local item = checkItem.basic()
-            log("Достаю предмет(" .. math.floor(count) .. " шт, всего: " ..  math.floor(item.qty) .."): " .. itemToLog, session.name)
+            log("Giving(" .. math.floor(count) .. " qty, all qty: " ..  math.floor(item.qty) ..") " .. itemToLog, session.name)
 
             if item.qty >= count then
                 if count > item.max_size then
@@ -550,7 +559,7 @@ local function insertItem(fingerprint, count)
                             itemsInserted = itemsInserted + inserted
                             count = stack and count - item.max_size or count
                         else
-                            log("Предмет не выдан, ошибка: " .. err, session.name)
+                            log("Item not given out , err " .. err, session.name)
                             break
                         end
                     end
@@ -560,14 +569,14 @@ local function insertItem(fingerprint, count)
                     if inserted > 0 then
                         itemsInserted = itemsInserted + inserted
                     else
-                        log("Предмет не выдан, ошибка: " .. err, session.name)
+                        log("Item not given out, err " .. err, session.name)
                     end
                 end
             end
         end
     end
 
-    log("Выдано предметов(" .. math.floor(itemsInserted) .. " шт): " .. itemToLog, session.name)
+    log("Items give out(" .. math.floor(itemsInserted) .. " qty) " .. itemToLog, session.name)
     return itemsInserted
 end
 
@@ -848,18 +857,18 @@ local function purchase()
     local count = tonumber(writes.amount.input)
 
     if guiVariables[guiPath[#guiPath]].amount <= session.balance then
-        log("Подготовка к покупке (" .. count .. " шт на сумму " .. guiVariables[guiPath[#guiPath]].amount .. " рипов): " .. guiVariables[guiPath[#guiPath]].item.text, session.name)
+        log("Init buy (" .. count .. " qty in the amount of " .. guiVariables[guiPath[#guiPath]].amount .. " rip) " .. guiVariables[guiPath[#guiPath]].item.text, session.name)
         local purchased = autoInsert(guiVariables[guiPath[#guiPath]].item.fingerprint, count)
 
         if purchased > 0 then
             local trueAmount = math.floor(purchased * guiVariables[guiPath[#guiPath]].item.buyPrice)
-            local msgToLog = session.name .. " покупает предмет(" .. purchased .. " шт на сумму " .. trueAmount .. " рипов): " .. guiVariables[guiPath[#guiPath]].item.text
+            local msgToLog = session.name .. " buy the (" .. purchased .. " qty in the amount of " .. trueAmount .. " rip) " .. guiVariables[guiPath[#guiPath]].item.text
             log(msgToLog, session.name)
             session.balance = session.balance - trueAmount
             session.transactions = session.transactions + 1
-            requestWithData({data = msgToLog, mPath = "/buy.log", path = {server, "/buy"}}, {method = "merge", toMerge = {balance = {[server] = session.balance}, transactions = session.transactions}, name = session.name})
+            requestWithData({data = msgToLog, mPath = "/buy.log", path = server .. "/buy"}, {method = "merge", toMerge = {balance = {[server] = session.balance}, transactions = session.transactions}, name = session.name})
         else
-            log("Товар не куплен", session.name)
+            log("Item not purchased", session.name)
         end
         
         scanMe()
@@ -979,7 +988,7 @@ end
 
 local function getFood()
     if autoInsert(items.food, freeFoodCount) > 0 then
-        log("Выдаю бесплатную еду", session.name)
+        log("I give out free food", session.name)
         session.foodTime = time(true) + 7200
         haveFood = true
         requestWithData(nil, {method = "merge", toMerge = {foodTime = session.foodTime}, name = session.name})
@@ -1029,12 +1038,12 @@ local function playLottery()
         end
         rip = math.floor(rip)
         setColorText(nil, 8, "[0x68f029]Вы выиграли: [0xffffff]" .. rip .. " [0x68f029]рипов", color.background)
-        local msgToLog = session.name .. " выиграл в лотерее " .. rip .. " рипов"
+        local msgToLog = session.name .. " won the lottery " .. rip .. " rip"
         log(msgToLog, session.name)
         session.balance = session.balance + rip
-        local response = requestWithData({data = msgToLog, mPath = "/lottery.log", path = {server, "/lottery"}}, {method = "merge", toMerge = {balance = {[server] = session.balance}}, name = session.name})
+        local response = requestWithData({data = msgToLog, mPath = "/lottery.log", path = server .. "/lottery"}, {method = "merge", toMerge = {balance = {[server] = session.balance}}, name = session.name})
         if not response or response.code ~= 200 then
-            log("Произошла ошибка при пополнении баланса: " .. (response and response.message and tostring(response.message) or "нет ответа от сервера"), session.name)
+            log("Error on updating balance " .. (response and response.message and tostring(response.message) or "no server response"), session.name)
             alert({"Внимание! Баланс не пополен,", "обратитесь к администрации!"})
         end
         sleep(.5)
@@ -1085,15 +1094,15 @@ local function drawInfo(page)
     gpu.setForeground(0xffffff)
     local x, y = 1, 2
 
-    for str = 1, #infoList[page] do 
-        if type(infoList[page][str]) == "table" then
-            gpu.setForeground(infoList[page][str][1])
+    for word = 1, #infoList[page] do 
+        if type(infoList[page][word]) == "table" then
+            gpu.setForeground(infoList[page][word][1])
         else
-            if infoList[page][str] == "\n" then
+            if infoList[page][word] == "\n" then
                 x, y = 1, y + 1
             else
-                gpu.set(x, y, infoList[page][str])
-                x = x + unicode.len(infoList[page][str])
+                gpu.set(x, y, infoList[page][word])
+                x = x + unicode.len(infoList[page][word])
             end
         end
     end
@@ -1148,12 +1157,12 @@ end
 
 local function acceptFeedback()
     if writes.feedback.input ~= "" then
-        local msgToLog = session.name .. " оставил отзыв: " .. writes.feedback.input
+        local msgToLog = session.name .. " left a feedback: " .. writes.feedback.input
         log(msgToLog, session.name)
         table.insert(session.feedbacks, {name = session.name, feedback = writes.feedback.input})
         table.sort(session.feedbacks, sort)
         session.feedback = writes.feedback.input
-        local response = requestWithData({data = msgToLog, mPath = "/feedbacks.log", path = {server, "/feedbacks"}}, {method = "feedback", feedback = writes.feedback.input, name = session.name})
+        local response = requestWithData({data = msgToLog, mPath = "/feedbacks.log", path = server.. "/feedbacks"}, {method = "feedback", feedback = writes.feedback.input, name = session.name})
         if response and response.code == 200 then
             buttons.acceptFeedback.notVisible = true
             writes.feedback.notVisible = true
@@ -1162,7 +1171,7 @@ local function acceptFeedback()
             drawFeedback(1)
             drawButtons()
         else
-            log("Произошла ошибка при оставлении отзыва: " .. (response and response.message and tostring(response.message) or "нет ответа от сервера"), session.name)
+            log("Error leaving feedback " .. (response and response.message and tostring(response.message) or "no server response"), session.name)
             alert({"Внимание! Отзыв не оставлен,", "обратитесь к администрации!"})
         end
         buttons.acceptFeedback.notVisible = true
@@ -1326,7 +1335,7 @@ function login(name)
 
                 if response then
                     if response.code == 200 then
-                        log("Авторизация игрока " .. name)
+                        log("Auth " .. name)
 
                         if response.userdata.banned then
                             blackList(name)
@@ -1374,7 +1383,7 @@ function login(name)
                         outOfService(response.message)
                     end
                 else
-                    log("Игрок " .. name .. " хотел авторизоваться, но сервер не отвечает. Переход в автономный режим...")
+                    log("Auth " .. name .. " cannot be processed, server is not responding! Going offline...")
                     session = {name = name, eula = true}
                     computer.addUser(name)
                     autonomous = true
@@ -1392,7 +1401,7 @@ function login(name)
         end
     else
         if session.name then
-            log("Деавторизация игрока " .. session.name)
+            log("De-auth " .. session.name)
         end
         if not admins[session.name] and session.name then
             computer.removeUser(session.name)
@@ -1553,7 +1562,6 @@ writes = {
 
 parseInfo()
 downloadItems()
-log("Запуск программы")
 initButtons()
 initLists()
 initWrites()
@@ -1787,11 +1795,11 @@ while true do
 
                 if count and pushItem(slot, count) then
                     local addMoney = count * guiVariables[guiPath[#guiPath]].item.sellPrice
-                    local msgToLog = session.name .. " продаёт предмет(" .. math.floor(count) .. " шт на сумму " .. addMoney .. " рипов): " .. guiVariables[guiPath[#guiPath]].item.text
+                    local msgToLog = session.name .. " selling item(" .. math.floor(count) .. " qty in the amount of" .. addMoney .. " rip) " .. guiVariables[guiPath[#guiPath]].item.text
                     log(msgToLog, session.name)
                     session.balance = session.balance + addMoney
                     session.transactions = session.transactions + 1
-                    local response = requestWithData({data = msgToLog, mPath = "/sell.log", path = {server, "/sell"}}, {method = "merge", toMerge = {balance = {[server] = session.balance}, transactions = session.transactions}, name = session.name}) 
+                    local response = requestWithData({data = msgToLog, mPath = "/sell.log", path = server .. "/sell"}, {method = "merge", toMerge = {balance = {[server] = session.balance}, transactions = session.transactions}, name = session.name}) 
                     if response and response.code == 200 then
                         setColorText(nil, 14, "[0x68f029]Баланс успешно пополнен на [0xffffff]" .. math.floor(addMoney) .. " [0x68f029] рипов!", color.background)
                         balance(1)
@@ -1804,7 +1812,7 @@ while true do
                             set(17, 5, guiVariables[guiPath[#guiPath]].item.leftCount .. "       ", color.background, 0xffffff)
                         end
                     else
-                        log("Произошла ошибка при пополнении баланса: " .. (response and response.message and tostring(response.message) or "нет ответа от сервера"), session.name)
+                        log("Error on updating balance " .. (response and response.message and tostring(response.message) or "no server response"), session.name)
                         alert({"Внимание! Баланс не пополен,", "обратитесь к администрации!"})
                     end
                 end
