@@ -7,8 +7,13 @@ local modem = component.modem
 local port = 1414
 
 local terminals = {
-	["39f19ac0-4341-4e2f-a2ea-c62a648aaeb4"] = true
+	"39f19ac0-4341-4e2f-a2ea-c62a648aaeb4"
 }
+
+for terminal = 1, #terminals do 
+    computer.addUser(terminals[terminal])
+    terminals[terminals[terminal]], terminals[terminal] = true, nil
+end 
 
 local function checkPath(path)
 	if not filesystem.exists(path) then
@@ -41,14 +46,13 @@ local function log(data, customPath)
 	local path = "/home/logs/" .. os.date("%d.%m.%Y", timestamp)
 	checkPath(path)
 	local data = time .. data
-	print(data)
 
 	if customPath then
 		path = path .. customPath
 	else
-		path = path .. "/server.log"
+		path = path .. "/main.log"
 	end
-	local days = {date .. "/", os.date("%d.%m.%Y", timestamp - 86400) .. "/", os.date("%d.%m.%Y", timestamp - 172800) .. "/", os.date("%d.%m.%Y", timestamp - 259200) .. "/"}
+	local days = {date .. "/", os.date("%d.%m.%Y/", timestamp - 86400), os.date("%d.%m.%Y/", timestamp - 172800), os.date("%d.%m.%Y/", timestamp - 259200)}
     for day = 1, #days do 
         days[days[day]], days[day] = true, nil
     end
@@ -257,6 +261,7 @@ function start()
 		else
 			if modem.open(port) then
 				local success = "RipMarket started on port " .. port .. "!"
+				print(success)
 				log(success)
 				event.listen("modem_message", messageHandler)
 			else
@@ -283,8 +288,3 @@ function restart()
 		start()
 	end
 end
-
-require("term").clear()
-start()
-pcall(os.sleep, math.huge)
-stop()
