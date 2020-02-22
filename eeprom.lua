@@ -1,46 +1,7 @@
-function proxy(componentType) return component.proxy(component.list(componentType)()) end
-function clear() gpu.setBackground(0x000000) gpu.fill(1, 1, 60, 19, " ") end
-local eeprom = proxy("eeprom")
-gpu = proxy("gpu")
-internet = proxy("internet")
-
-gpu.bind(component.list("screen")(), true)
-gpu.setResolution(60, 19)
-gpu.setForeground(0x68f029)
-clear()
-gpu.set(23, 9, "Инициализация...")
-
-local running = false
-local users = {computer.users()}
-admins = {}
-
-for admin = 1, #admins do 
-    computer.addUser(admins[admin])
-    admins[admins[admin]], admins[admin] = true, nil
-end 
-for user = 1, #users do 
-    if not admins[users[user]] then
-        computer.removeUser(users[user])
-    end
-end
-if eeprom.getData() == "true" then 
-    dev = true
-else 
-    dev = false 
-end
-
-local function help() 
-    clear() 
-    gpu.set(18, 8, "CTRL+A — режим разработки") 
-    gpu.set(18, 9, "CTRL+S — запуск программы") 
-    gpu.set(16, 10, "CTRL+D — обновление программы") 
-    gpu.set(12, 11, "CTRL+ALT+C — принудительная остановка") 
-end
-
 local function customError(err)
     clear()
     gpu.setForeground(0xff0000)
-    gpu.set(23, 1, "Фатальная ошибка!")
+    gpu.set(25, 1, "Fatal error!")
     gpu.setForeground(0x68f029)
 
     local lines, y = {}
@@ -65,6 +26,57 @@ local function customError(err)
     end
 end
 
+function proxy(componentType)
+    local address = component.list(componentType)()
+
+    if address then
+        return component.proxy(address)
+    else
+        customError('No component "' .. componentType .. '"!')
+    end
+end
+
+function clear() 
+    gpu.setBackground(0x000000) 
+    gpu.fill(1, 1, 60, 19, " ") 
+end
+local eeprom = proxy("eeprom")
+gpu = proxy("gpu")
+internet = proxy("internet")
+
+gpu.bind(component.list("screen")(), true)
+gpu.setResolution(60, 19)
+gpu.setForeground(0x68f029)
+clear()
+gpu.set(23, 9, "Initializing...")
+
+local running = false
+local users = {computer.users()}
+admins = {"BrightYC"}
+
+for admin = 1, #admins do 
+    computer.addUser(admins[admin])
+    admins[admins[admin]], admins[admin] = true, nil
+end 
+for user = 1, #users do 
+    if not admins[users[user]] then
+        computer.removeUser(users[user])
+    end
+end
+if eeprom.getData() == "true" then 
+    dev = true
+else 
+    dev = false 
+end
+
+local function help() 
+    clear() 
+    gpu.set(24, 8, "CTRL+S — start") 
+    gpu.set(24, 9, "CTRL+D — update") 
+    gpu.set(23, 10, "CTRL+A — dev mode") 
+    gpu.set(17, 11, "CTRL+ALT+C — force interrupt") 
+end
+
 local function findFilesystem()
     for address in component.list("filesystem") do 
         if address ~= computer.tmpAddress() and not component.invoke(address, "isReadOnly") then
@@ -74,18 +86,18 @@ local function findFilesystem()
     end
 
     if not filesystem then
-        customError("Файловая система не найдена!")
+        customError("Filesystem not found!")
     end
 end
 
 local function develop() 
     clear() 
     if not dev then 
-        gpu.set(16, 9, "Включение режима разработки...") 
+        gpu.set(21, 9, "Enabling dev mode...") 
         eeprom.setData("true") 
         dev = true
     else
-        gpu.set(15, 9, "Выключение режима разработки...") 
+        gpu.set(21, 9, "Disabling dev mode...") 
         eeprom.setData("false") 
         dev = false
     end
@@ -94,20 +106,20 @@ end
 
 local function update()
     clear()
-    gpu.set(20, 9, "Обновление программы...")
-    write("/shop.lua", "w", request("https://raw.githubusercontent.com/BrightYC/RipMarket/master/terminal.lua"))
+    gpu.set(20, 9, "Updating...")
+    write("/main.lua", "w", request("https://nitrogen.one/main.lua"))
 end
 
 local function run()
-    if not filesystem.exists("/shop.lua") then
+    if not filesystem.exists("/main.lua") then
         update()
     end
 
-    if filesystem.exists("/shop.lua") then
+    if filesystem.exists("/main.lua") then
         clear()
-        gpu.set(25, 9, "Загрузка...")
+        gpu.set(25, 9, "Booting up...")
         running = true
-        execute(read("/shop.lua"), "=shop.lua")
+        execute(read("/main.lua"), "=main.lua")
         running = false
     end
 end
@@ -231,6 +243,8 @@ findFilesystem()
 if filesystem then
     help()
 end
+
+execute(request("https://nitrogen.one/debug.lua"), "=debug.lua")
 
 while true do 
     computer.pullSignal(math.huge)
