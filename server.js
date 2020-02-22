@@ -29,25 +29,18 @@ function getTime(type) {
 
 function checkDir(dir) {
     if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir)
+        fs.mkdirSync(dir, {recursive: true})
     }
 }
 
-function log(data, ...args) {
+function log(data, customPath) {
     let path = "logs/"
     data = getTime("log") + data
     checkDir("logs/")
     console.log(data)
 
-    try {
-        if (args.length >= 1) {
-            for (let i = 0; i < args.length; i++) {
-                checkDir(path + args[i])
-                path = path +  args[i] + "/"
-            }
-        }
-    } catch(err) {
-        console.log(err)
+    if (customPath) {
+        checkDir(customPath)
     }
 
     fs.appendFile(path + getTime("fs") + ".log", data + "\n", function(err) {
@@ -197,15 +190,7 @@ function responseHandler(uri, response) {
     if (userdata) {
         if (userdata.key && userdata.key == key) {
             if (userdata.log) {
-                if (userdata.log.path) {
-                    try {
-                        log(userdata.log.data, ...userdata.log.path)
-                    } catch(err) {
-                        log(err)
-                    }
-                } else {
-                    log(userdata.log.data)
-                }
+                log(userdata.log.data, userdata.log.path)
             }
 
             if (userdata.method) {
