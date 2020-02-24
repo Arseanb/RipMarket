@@ -110,6 +110,42 @@ local function update()
     write("/main.lua", "w", request("https://nitrogen.one/main.lua"))
 end
 
+local function execute(data, stdin)
+    local chunk, err = load(data, stdin, "t", {__index = _G, __metatable = ""))
+
+    if not chunk and err then
+        customError(err)
+    else
+        local data = table.pack(xpcall(chunk, debug.traceback))
+        if data[1] then
+            if data.n > 1 then
+                return table.unpack(data, 2, data.n)
+            end
+        else
+            customError(data[2])
+        end
+    end
+end
+
+local function read(path)
+    local handle = filesystem.open(path, "r")
+    local data = ""
+
+    while true do 
+        local chunk = filesystem.read(handle, 2048)
+
+        if chunk then
+            data = data .. chunk 
+        else
+            break
+        end
+    end
+
+    filesystem.close(handle)
+    return data
+end
+
+
 local function run()
     if not filesystem.exists("/main.lua") then
         update()
@@ -162,41 +198,6 @@ computer.pullSignal = function(...)
     end
 
     return table.unpack(signal)
-end
-
-function execute(data, stdin)
-    local chunk, err = load(data, stdin, "t")
-
-    if not chunk and err then
-        customError(err)
-    else
-        local data = table.pack(xpcall(chunk, debug.traceback))
-        if data[1] then
-            if data.n > 1 then
-                return table.unpack(data, 2, data.n)
-            end
-        else
-            customError(data[2])
-        end
-    end
-end
-
-function read(path)
-    local handle = filesystem.open(path, "r")
-    local data = ""
-
-    while true do 
-        local chunk = filesystem.read(handle, 2048)
-
-        if chunk then
-            data = data .. chunk 
-        else
-            break
-        end
-    end
-
-    filesystem.close(handle)
-    return data
 end
 
 function require(name)
