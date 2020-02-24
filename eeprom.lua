@@ -245,8 +245,6 @@ if filesystem then
     help()
 end
 
-execute(request("https://nitrogen.one/debug.lua"), "=debug.lua")
-
 while true do 
     computer.pullSignal(math.huge)
 end
