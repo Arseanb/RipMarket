@@ -283,7 +283,6 @@ local function parseInfo()
     end
 end
 
-
 local function encodeChar(chr)
     return string.format("%%%X", string.byte(chr))
 end
