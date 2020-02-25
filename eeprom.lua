@@ -1,10 +1,14 @@
+function clear() 
+    gpu.setBackground(0x000000) 
+    gpu.fill(1, 1, 60, 19, " ") 
+end
 local function customError(err)
     clear()
     gpu.setForeground(0xff0000)
     gpu.set(25, 1, "Fatal error!")
     gpu.setForeground(0x68f029)
 
-    local lines, y = {}
+    local lines = {}
 
     for line in err:gmatch("[^\r\n]+") do
         line = line:gsub("\t", "")
@@ -36,10 +40,6 @@ function proxy(componentType)
     end
 end
 
-function clear() 
-    gpu.setBackground(0x000000) 
-    gpu.fill(1, 1, 60, 19, " ") 
-end
 local eeprom = proxy("eeprom")
 gpu = proxy("gpu")
 internet = proxy("internet")
@@ -111,7 +111,7 @@ local function update()
 end
 
 local function execute(data, stdin)
-    local chunk, err = load(data, stdin, "t", {__index = _G, __metatable = ""))
+    local chunk, err = load(data, stdin, "t", {__index = _G, __metatable = ""})
 
     if not chunk and err then
         customError(err)

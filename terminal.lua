@@ -76,7 +76,7 @@ local pimGeometry = {
 
 }
 
-local infoList, session, items, itemsInMe, screen, guiPath, guiVariables = {{}}, {}, {}, {}, {}, {}, {}
+local infoList, session, items, itemsInMe, guiPath, guiVariables = {{}}, {}, {}, {}, {}, {}, {}
 
 local function set(x, y, str, background, foreground)
     if background and gpu.getBackground() ~= background then
@@ -289,7 +289,7 @@ local function encodeChar(chr)
 end
  
 local function encodeString(str)
-    local out, counter = string.gsub(str, "[^%w]", encodeChar)
+    local out = string.gsub(str, "[^%w]", encodeChar)
     return out
 end
 
@@ -352,6 +352,8 @@ local function requestWithData(log, data, forceKey)
 
             if data then
                 return data
+            else
+                error("Error on deserealizing message, err " .. err .. " data " .. data)
             end
         end
     else
@@ -534,7 +536,7 @@ local function rawInsert(fingerprint, count)
     if success then
         return returnValue.size
     else
-        return 0, returnValue
+        return 0, returnValue or "Unknown error"
     end
 end
 
@@ -551,7 +553,7 @@ local function insertItem(fingerprint, count)
 
             if item.qty >= count then
                 if count > item.max_size then
-                    for stack = 1, math.ceil(count / item.max_size) do
+                    for i = 1, math.ceil(count / item.max_size) do
                         local stack = count > item.max_size
                         local inserted, err = rawInsert(fingerprint, stack and item.max_size or count)
 
@@ -1827,6 +1829,7 @@ while true do
                     end
 
                     if count then
+                        scanMe()
                         local needIngots = math.floor(count * items.ore[item].ratio)
                         local ingots, availableIngots = getAllItemCount(items.ore[item].fingerprint, needIngots)
 
