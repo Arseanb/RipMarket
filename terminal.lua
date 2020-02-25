@@ -740,9 +740,11 @@ local function cursorBlink(write, x, active)
     set(x, writes[write].y, "▁", writes[write].activeBackground, active and writes[write].cursorForeground and writes[write].cursorForeground or writes[write].activeCursorForeground)
 end
 
-local function inputCursor(write, active, force)
+local function cursor(write, active, force)
     if writes[write].cursor and (force or computer.uptime() >= writes[write].cursorTime) then
-        cursorBlink(write, writes[write].x + writes[write].len - writes[write].pos, active)
+        local x = writes[write].x + writes[write].len - writes[write].pos
+        print(x, "POS " .. writes[write].pos, "LEN " .. writes[write].len)
+        cursorBlink(write, writes[write].x + writes[write].len, active)
         writes[write].cursorState = active
         writes[write].cursorTime = computer.uptime() + .5
     end
@@ -825,11 +827,11 @@ local function inputWrite(write, char)
             writes[write].input = writes[write].input .. symbol
         end
         writes[write].len = writes[write].len + 1
-        writes[write].pos = write[write].pos + 1
+        writes[write].pos = writes[write].pos + 1
 
         drawText(write, true)
         inputFunction(write, char)
-        inputCursor(write, true, true)
+        cursor(write, true, true)
     elseif char == 8 and writes[write].len - 1 ~= -1 then
         if writes[write].pos ~= writes[write].len then
             local beforeInput, afterInput = unicode.sub(1, writes[write].pos - 1), unicode.sub(writes[write].pos, writes[write].len)
@@ -838,7 +840,7 @@ local function inputWrite(write, char)
             writes[write].input = unicode.sub(writes[write].input, 1, writes[write].len - 1)
         end
         writes[write].len = writes[write].len - 1
-        writes[write].pos = write[write].pos - 1
+        writes[write].pos = writes[write].pos - 1
 
         if writes[write].strictNumber and writes[write].input == "" then
             set(writes[write].x, writes[write].y, "0", color.activeBackground, color.activeForeground)
@@ -846,7 +848,7 @@ local function inputWrite(write, char)
 
         drawText(write, true, true)
         inputFunction(write)
-        inputCursor(write, true, true)
+        cursor(write, true, true)
     end
 end
 
@@ -1697,7 +1699,7 @@ while true do
                     drawText(focus.write, false)
                     writes[focus.write].cursorState = false
                     writes[focus.write].cursorTime = 0
-                    inputCursor(focus.write, false, true)
+                    cursor(focus.write, false, true)
                 else
                     fill(writes[focus.write].x, writes[focus.write].y, writes[focus.write].width, 1, " ", writes[focus.write].background)
                     set(writes[focus.write].textPosX, writes[focus.write].y, writes[focus.write].text, writes[focus.write].background, writes[focus.write].foreground)
@@ -1866,7 +1868,7 @@ while true do
             end
         end
         if focus.write then
-            inputCursor(focus.write, not writes[focus.write].cursorState, false)
+            cursor(focus.write, not writes[focus.write].cursorState, false)
         end
     end
 end

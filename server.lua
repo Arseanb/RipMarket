@@ -11,7 +11,6 @@ local terminals = {
 }
 
 for terminal = 1, #terminals do 
-    computer.addUser(terminals[terminal])
     terminals[terminals[terminal]], terminals[terminal] = true, nil
 end 
 

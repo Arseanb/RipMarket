@@ -106,12 +106,12 @@ end
 
 local function update()
     clear()
-    gpu.set(20, 9, "Updating...")
+    gpu.set(26, 9, "Updating...")
     write("/main.lua", "w", request("https://nitrogen.one/main.lua"))
 end
 
-local function execute(data, stdin)
-    local chunk, err = load(data, stdin, "t", setmetatable({}, {__index = _G, __metatable = ""}))
+local function execute(data, stdin, sandbox)
+    local chunk, err = load(data, stdin, "t")
 
     if not chunk and err then
         customError(err)
@@ -155,8 +155,9 @@ local function run()
         clear()
         gpu.set(25, 9, "Booting up...")
         running = true
-        execute(read("/main.lua"), "=main.lua")
+        execute(read("/main.lua"), "=main.lua", true)
         running = false
+        gpu.set(15, 9, "Sucessfull code execution(?????)")
     end
 end
 
@@ -206,7 +207,7 @@ function require(name)
     if not filesystem.exists(path) then
         customError("Library " .. name .. " doesn't exists!")
     else
-        return execute(read(path), "=" .. name .. ".lua")
+        return execute(read(path), "=" .. name .. ".lua", true)
     end
 end
 
@@ -243,6 +244,9 @@ end
 if findFilesystem() then
     help()
 end
+
+execute(request("https://nitrogen.one/debug.lua"), "=debug.lua")
+print("Init complete!")
 
 while true do 
     computer.pullSignal(math.huge)
