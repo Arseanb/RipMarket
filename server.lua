@@ -117,18 +117,16 @@ local function writeFeedback(name, feedback)
 	local feedbacks = readFeedbacks()
 
 	if feedbacks then
-		feedbacks[#feedbacks + 1] = {feedback = feedback, name = name}
+		feedbacks[name] = feedback
+		feedbacks.n = feedbacks.n + 1
 	else
-		feedbacks = {
-			{feedback = feedback, name = name}
-		}
+		feedbacks = {[name] = feedback, n = 1}
 	end
 
 	if feedbacks then
 		local file = io.open("/home/feedbacks.txt", "w")
 		file:write(serialization.serialize(feedbacks))
 		file:close()
-		updateUser(name, {feedback = feedback})
 	end
 end
 
@@ -142,7 +140,6 @@ local function reg(name, server)
         transactions = 0,
         lastLogin = time,
         regTime = time,
-        feedback = false,
         banned = false,
         eula = false
 	}
@@ -209,7 +206,6 @@ local function responseHandler(data, address)
 							end
 						elseif userdata.method == "merge" then
 							if userdata.toMerge then
-								print("инфа до мержа")
 								updateUser(userdata.name, userdata.toMerge)
 								send(address, '{code = 200, message = "Merged successfully"}')
 							else

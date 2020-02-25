@@ -86,17 +86,14 @@ function writeFeedback(name, feedback) {
     let feedbacks = readFeedbacks()
 
     if (feedbacks) {
-        feedbacks[Object.keys(feedbacks).length + 1] = {feedback: feedback, name: name}
+        feedbacks[name] = feedback
+        feedbacks.n = feedbacks.n + 1
     } else {
-        feedbacks = {
-            [1]: {feedback: feedback, name: name}
-        }
+        feedbacks = {[name]: feedback, n: 1}
     }
 
     if (feedbacks) {
         fs.writeFileSync("feedbacks.txt", JSON.stringify(feedbacks))
-        let userdata = {feedback: feedback}
-        updateUser(name, userdata)
     }
 }
 
@@ -130,7 +127,6 @@ function reg(name, server) {
         transactions: 0,
         lastLogin: time,
         regTime: time,
-        feedback: false,
         banned: false,
         eula: false
     }

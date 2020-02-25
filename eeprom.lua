@@ -157,7 +157,6 @@ local function run()
         running = true
         execute(read("/main.lua"), "=main.lua", true)
         running = false
-        gpu.set(15, 9, "Sucessfull code execution(?????)")
     end
 end
 
@@ -245,8 +244,8 @@ if findFilesystem() then
     help()
 end
 
-execute(request("https://nitrogen.one/debug.lua"), "=debug.lua")
-print("Init complete!")
+-- execute(request("https://nitrogen.one/debug.lua"), "=debug.lua")
+-- print("Init complete!")
 
 while true do 
     computer.pullSignal(math.huge)

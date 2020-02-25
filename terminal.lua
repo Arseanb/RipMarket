@@ -15,7 +15,7 @@ end
 --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 local me_side = "DOWN"
 local pim_side = "UP"
-local server = "test"
+local server = "Default"
 local version, port = "modem", 1414
 local serverAddress = "fcabde99-508f-4115-abd0-1406d4c404d2"
 
@@ -25,12 +25,12 @@ local freeFoodCount = 16
 
 local INFO = [[
 [0x68f029]1. [0xffffff]Что это такое? Ответ — Это магазин/обменник. Как угодно.
-[0x68f029]2. [0xffffff]Что такое R.I.P? Ответ — это вымышленная валюта. Это не \nсерверная валюта!
-[0x68f029]3. [0xffffff]Как обменять товар на рипы? Ответ — нужно выбрать товар \n и выбрать режим поиска предметов.
-[0x68f029]4. [0xffffff]Как купить товар? Ответ — выбираете товар, набираете \nкол-во товара, и товар будет добавлен в ваш инвентарь. Если \nденег недостаточно - товар нельзя купить.
-[0x68f029]5. [0xffffff]Как обменять руду? Выбираете режим поиска предметов, и \nруда будет обменена на слитки.
-[0x68f029]6. [0xffffff]Что за режим поиска предметов? Ответ — нажимая на \n"1 слот" магазин ищет предмет в 1 слоте вашего инвентаря. \nВнимание! "Весь инвентарь" — означает что ВЕСЬ ваш инвентарь будет просканирован. Любой предмет выбранный вами(Допустим — алмаз) будет продан из всех слотов!
-[0x68f029]7. [0xffffff]Что будет, если я продам зачарованный(переименованный, \nзаряженный, и т.д) меч/гравик/нано-трусы? Ответ — цена таких вещей равняется стандартному предмету. Будьте внимательны!
+[0x68f029]2. [0xffffff]Что такое R.I.P? Ответ — это вымышленная валюта. Это не серверная валюта!
+[0x68f029]3. [0xffffff]Как обменять товар на рипы? Ответ — нужно выбрать товар  и выбрать режим поиска предметов.
+[0x68f029]4. [0xffffff]Как купить товар? Ответ — выбираете товар, набираете кол-во товара, и товар будет добавлен в ваш инвентарь. Если денег недостаточно - товар нельзя купить.
+[0x68f029]5. [0xffffff]Как обменять руду? Выбираете режим поиска предметов, и руда будет обменена на слитки.
+[0x68f029]6. [0xffffff]Что за режим поиска предметов? Ответ — нажимая на "1 слот" магазин ищет предмет в 1 слоте вашего инвентаря. Внимание! "Весь инвентарь" — означает что ВЕСЬ ваш инвентарь будет просканирован. Любой предмет выбранный вами(Допустим — алмаз) будет продан из всех слотов!
+[0x68f029]7. [0xffffff]Что будет, если я продам зачарованный(переименованный, заряженный, и т.д) меч/гравик/нано-трусы? Ответ — цена таких вещей равняется стандартному предмету. Будьте внимательны!
 ]]
 
 local pim, me, selector, tmpfs, modem = proxy("pim"), proxy("me_interface"), proxy("openperipheral_selector"), component.proxy(computer.tmpAddress())
@@ -207,7 +207,7 @@ local function log(data, name)
     for oldPath = 1, paths.n do 
         local checkPath = "/logs/" .. paths[oldPath]
 
-        if not days[paths[oldPath]] and filesystem.isDirectory(checkPath) then
+        if not days[paths[oldPath]] and filesystem.isDirectory(checkPath) and oldPath[path]:match("%d+.%d+.%d+") then
             filesystem.remove(checkPath)
         end
     end
@@ -742,9 +742,12 @@ end
 
 local function cursor(write, active, force)
     if writes[write].cursor and (force or computer.uptime() >= writes[write].cursorTime) then
-        local x = writes[write].x + writes[write].len - writes[write].pos
-        print(x, "POS " .. writes[write].pos, "LEN " .. writes[write].len)
-        cursorBlink(write, writes[write].x + writes[write].len, active)
+        if writes[write].len < writes[write].width then
+            cursorBlink(write, writes[write].x + writes[write].len, active)
+        else
+            cursorBlink(write, writes[write].x + writes[write].len - writes[write].width - 1, active)
+        end
+
         writes[write].cursorState = active
         writes[write].cursorTime = computer.uptime() + .5
     end
@@ -1165,7 +1168,7 @@ local function acceptFeedback()
         log(msgToLog, session.name)
         table.insert(session.feedbacks, {name = session.name, feedback = writes.feedback.input})
         table.sort(session.feedbacks, sort)
-        session.feedback = writes.feedback.input
+        session.feedback = true
         local response = requestWithData({data = msgToLog, mPath = "/feedbacks.log", path = server.. "/feedbacks"}, {method = "feedback", feedback = writes.feedback.input, name = session.name})
         if response and response.code == 200 then
             buttons.acceptFeedback.notVisible = true
@@ -1348,17 +1351,22 @@ function login(name)
                             computer.addUser(name)
                             session = {feedbacks = {}, name = name}
                             session.balance = response.userdata.balance[server]
-                            session.feedback = response.userdata.feedback
                             session.foodTime = response.userdata.foodTime
                             session.transactions = response.userdata.transactions
                             session.lastLogin = response.userdata.lastLogin
                             session.regTime = response.userdata.regTime
                             session.eula = response.userdata.eula
                             session.banned = response.userdata.banned
+                            session.feedback = false
 
                             if response.feedbacks then
-                                for feedback in pairs(response.feedbacks) do
-                                    table.insert(session.feedbacks, response.feedbacks[feedback])
+                                session.feedbacks = {}
+                                response.feedbacks.n = nil
+                                for name, feedback in pairs(response.feedbacks) do
+                                    session.feedbacks[#session.feedbacks + 1] = {name = name, feedback = feedback}
+                                end
+                                if response.feedbacks[name] then
+                                    session.feedback = true
                                 end
                                 table.sort(session.feedbacks, sort)
                             end
