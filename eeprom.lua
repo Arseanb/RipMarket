@@ -110,7 +110,7 @@ local function update()
     write("/main.lua", "w", request("https://raw.githubusercontent.com/BrightYC/RipMarket/master/terminal.lua"))
 end
 
-local function execute(data, stdin, sandbox)
+function execute(data, stdin, sandbox)
     local chunk, err = load(data, stdin, "t", sandbox and setmetatable({}, {__index = _G, __metatable = ""}))
 
     if not chunk and err then
