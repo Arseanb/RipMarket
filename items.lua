@@ -34,7 +34,6 @@
         {text = "Шерсть", buyPrice = 15, minCount = 512, maxCount = 1310720, needed = 1000, fingerprint = {{id="minecraft:wool",dmg=0.0}}, raw_name = {"tile.cloth.white"}},
         {text = "Порох", buyPrice = 30, minCount = 0, maxCount = 1310720, needed = 1000, fingerprint = {{id="minecraft:gunpowder",dmg=0.0}}, raw_name = {"item.sulphur"}},
         {text = "Красная пыль", buyPrice = 4, sellPrice = 2, minCount = 2048, maxCount = 1310720, fingerprint = {{id="minecraft:redstone",dmg=0.0}}, raw_name = {"item.redstone"}},
-        {text = "Сахарный тростник", buyPrice = 3, minCount = 0, needed = 1000, maxCount = 1310720, maxCount = 1310720, fingerprint = {{id="minecraft:reeds",dmg=0.0}}, raw_name = {"item.reeds"}},
         {text = "Светопыль", buyPrice = 3, sellPrice = 2, minCount = 1024, maxCount = 1310720, fingerprint = {{id="minecraft:glowstone_dust",dmg=0.0}}, raw_name = {"item.yellowdust"}},
         {text = "Кость", buyPrice = 3, minCount = 0, maxCount = 1310720, needed = 1000, fingerprint = {{id="minecraft:bone",dmg=0.0}}, raw_name = {"item.bone"}},
         {text = "Гнилая плоть", buyPrice = 3, minCount = 0, maxCount = 1310720, needed = 1000, fingerprint = {{id="minecraft:rotten_flesh",dmg=0.0}}, raw_name = {"item.rottenflesh"}},

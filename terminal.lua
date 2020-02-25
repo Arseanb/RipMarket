@@ -318,7 +318,7 @@ local function downloadItems()
 end
 
 local function pull(timeout, eventType)
-    local deadline = computer.uptime() + timeout or 0
+    local deadline = (computer.uptime() + timeout) or 0
     repeat
         local signal = {computer.pullSignal(deadline - computer.uptime())}
 
@@ -1551,8 +1551,7 @@ guiFunctions = {
     ore = ore,
     lottery = lottery,
     feedbacks = feedbacks,
-    info = info,
-    freeFood = freeFood
+    info = info
 }
 
 writes = {
