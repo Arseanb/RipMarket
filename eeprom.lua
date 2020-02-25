@@ -111,7 +111,7 @@ local function update()
 end
 
 local function execute(data, stdin, sandbox)
-    local chunk, err = load(data, stdin, "t")
+    local chunk, err = load(data, stdin, "t", sandbox and setmetatable({}, {__index = _G, __metatable = ""}))
 
     if not chunk and err then
         customError(err)
