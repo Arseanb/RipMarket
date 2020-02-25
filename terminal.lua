@@ -744,7 +744,7 @@ local function cursor(write, active, force)
         if writes[write].len < writes[write].width then
             cursorBlink(write, writes[write].x + writes[write].len, active)
         else
-            cursorBlink(write, writes[write].x + writes[write].len - writes[write].width - 1, active)
+            cursorBlink(write, writes[write].x + writes[write].width - 1, active)
         end
 
         writes[write].cursorState = active
@@ -1287,7 +1287,7 @@ local function clearVariables(all, gui)
     for write in pairs(writes) do
         if writes[write].writeIn == gui or all then
             writes[write].input = ""
-            writes[write].len = 0
+            writes[write].len, writes[write].pos = 0, 0
         end
     end
     for list in pairs(lists) do
