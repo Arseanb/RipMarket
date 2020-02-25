@@ -90,7 +90,7 @@ local function findFilesystem()
     end
 end
 
-local function develop() 
+local function devMode() 
     clear() 
     if not dev then 
         gpu.set(21, 9, "Enabling dev mode...") 
@@ -111,7 +111,7 @@ local function update()
 end
 
 local function execute(data, stdin)
-    local chunk, err = load(data, stdin, "t", {__index = _G, __metatable = ""})
+    local chunk, err = load(data, stdin, "t", setmetatable({}, {__index = _G, __metatable = ""}))
 
     if not chunk and err then
         customError(err)
@@ -178,7 +178,7 @@ computer.pullSignal = function(...)
                 end
             else
                 if signal[4] == 30 then
-                    develop()
+                    devMode()
                 elseif signal[4] == 31 then
                     run()
                 elseif signal[4] == 32 then       
@@ -240,8 +240,7 @@ function sleep(timeout)
     until computer.uptime() >= deadline
 end
 
-findFilesystem()
-if filesystem then
+if findFilesystem() then
     help()
 end
 
